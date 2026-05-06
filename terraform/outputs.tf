@@ -1,0 +1,14 @@
+output "users_table" { value = aws_dynamodb_table.users.name }
+output "active_resources_table" { value = aws_dynamodb_table.active_resources.name }
+output "usage_log_table" { value = aws_dynamodb_table.usage_log.name }
+output "price_cache_table" { value = aws_dynamodb_table.price_cache.name }
+output "notification_locks_table" { value = aws_dynamodb_table.notification_locks.name }
+output "sns_topic_arn" { value = aws_sns_topic.alerts.arn }
+output "bedrock_proxy_url" { value = "${aws_apigatewayv2_api.bedrock_proxy.api_endpoint}/bedrock" }
+output "prestop_scp_id" { value = aws_organizations_policy.prestop.id }
+output "hardlock_scp_id" { value = aws_organizations_policy.hardlock.id }
+output "member_stackset_name" { value = try(aws_cloudformation_stack_set.member_baseline[0].name, null) }
+output "cloudtrail_bucket" { value = aws_s3_bucket.cloudtrail.id }
+output "event_queue_url" { value = aws_sqs_queue.processor.url }
+output "pricing_lambda_name" { value = aws_lambda_function.pricing_cache.function_name }
+output "discovery_lambda_name" { value = aws_lambda_function.discovery_backfill.function_name }

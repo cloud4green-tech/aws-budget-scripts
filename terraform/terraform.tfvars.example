@@ -1,0 +1,11 @@
+management_region    = "us-east-1"
+target_ou_id         = "ou-xxxx-yyyyyyyy"
+default_budget_usd   = 2
+notification_email   = "lohit@cloud4green.com"
+pricing_regions      = ["us-east-1", "us-east-2", "us-west-2", "ap-south-1"]
+member_role_name     = "C4GBudgetMemberRole"
+deploy_member_stackset = true
+processor_sqs_max_concurrency = 10
+allow_sagemaker_endpoint_delete = false
+support_email = "labs@cloud4green.com"
+bedrock_proxy_required_header = "x-c4g-user-id"

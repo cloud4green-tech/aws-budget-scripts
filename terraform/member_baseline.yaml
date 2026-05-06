@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloud4Green member account baseline for threshold-based budget guardian.
+Parameters:
+  CentralLambdaRoleArn:
+    Type: String
+  CentralEventBusArn:
+    Type: String
+  ExternalId:
+    Type: String
+    NoEcho: true
+  MemberRoleName:
+    Type: String
+    Default: C4GBudgetMemberRole
+Resources:
+  BudgetMemberRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref MemberRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Ref CentralLambdaRoleArn
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+      Policies:
+        - PolicyName: SafeStopOnlyNoDelete
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: EC2StopOnly
+                Effect: Allow
+                Action: [ec2:DescribeRegions, ec2:DescribeInstances, ec2:StopInstances, ec2:DescribeVolumes]
+                Resource: '*'
+              - Sid: SageMakerStopOnly
+                Effect: Allow
+                Action: [sagemaker:ListNotebookInstances, sagemaker:StopNotebookInstance, sagemaker:ListTrainingJobs, sagemaker:DescribeTrainingJob, sagemaker:StopTrainingJob, sagemaker:ListEndpoints, sagemaker:DescribeEndpoint, sagemaker:DescribeEndpointConfig]
+                Resource: '*'
+              - Sid: LambdaThrottleOnly
+                Effect: Allow
+                Action: [lambda:ListFunctions, lambda:PutFunctionConcurrency, lambda:ListEventSourceMappings, lambda:UpdateEventSourceMapping]
+                Resource: '*'
+              - Sid: ECSScaleStopOnly
+                Effect: Allow
+                Action: [ecs:ListClusters, ecs:ListServices, ecs:DescribeServices, ecs:UpdateService, ecs:ListTasks, ecs:StopTask, ecs:DescribeTasks]
+                Resource: '*'
+              - Sid: EKSScaleNodegroupsOnly
+                Effect: Allow
+                Action: [eks:ListClusters, eks:DescribeCluster, eks:ListNodegroups, eks:DescribeNodegroup, eks:UpdateNodegroupConfig]
+                Resource: '*'
+              - Sid: GlueStopOnly
+                Effect: Allow
+                Action: [glue:GetJobs, glue:GetJobRuns, glue:BatchStopJobRun]
+                Resource: '*'
+              - Sid: EMRReadAndServerlessStopOnly
+                Effect: Allow
+                Action: [elasticmapreduce:ListClusters, elasticmapreduce:DescribeCluster, emr-serverless:ListApplications, emr-serverless:StopApplication]
+                Resource: '*'
+              - Sid: ExplicitDenyDangerousDeletes
+                Effect: Deny
+                Action:
+                  - ec2:TerminateInstances
+                  - sagemaker:DeleteEndpoint
+                  - sagemaker:DeleteModel
+                  - sagemaker:DeleteNotebookInstance
+                  - sagemaker:DeleteTrainingJob
+                  - lambda:DeleteFunction
+                  - ecs:DeleteService
+                  - eks:DeleteCluster
+                  - eks:DeleteNodegroup
+                  - s3:DeleteObject
+                  - s3:DeleteBucket
+                  - dynamodb:DeleteTable
+                  - dynamodb:DeleteItem
+                Resource: '*'
+  ForwardRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: C4GBudgetEventForwardRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: events.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PutToCentralBus
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: events:PutEvents
+                Resource: !Ref CentralEventBusArn
+  ForwardCloudTrailEvents:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: C4GBudgetForwardCloudTrailEvents
+      State: ENABLED
+      EventPattern:
+        detail-type: ["AWS API Call via CloudTrail"]
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+            - sagemaker.amazonaws.com
+            - lambda.amazonaws.com
+            - ecs.amazonaws.com
+            - eks.amazonaws.com
+            - glue.amazonaws.com
+            - elasticmapreduce.amazonaws.com
+            - s3.amazonaws.com
+            - dynamodb.amazonaws.com
+            - bedrock.amazonaws.com
+            - bedrock-runtime.amazonaws.com
+            - bedrock-agent.amazonaws.com
+            - bedrock-agent-runtime.amazonaws.com
+            - bedrock-agentcore.amazonaws.com
+      Targets:
+        - Id: CentralBus
+          Arn: !Ref CentralEventBusArn
+          RoleArn: !GetAtt ForwardRole.Arn
+Outputs:
+  BudgetMemberRoleArn:
+    Value: !GetAtt BudgetMemberRole.Arn
+  ForwardRuleArn:
+    Value: !GetAtt ForwardCloudTrailEvents.Arn

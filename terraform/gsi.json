@@ -1,0 +1,14 @@
+[
+  {
+    "IndexName": "account_id-index",
+    "KeySchema": [
+      {
+        "AttributeName": "account_id",
+        "KeyType": "HASH"
+      }
+    ],
+    "Projection": {
+      "ProjectionType": "ALL"
+    }
+  }
+]
